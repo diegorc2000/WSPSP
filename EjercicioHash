@@ -1,0 +1,206 @@
+//CONTROLADORUSUARIO
+package demo.controlador;
+
+import org.springframework.stereotype.Controller;
+
+@Controller
+public class ControladorUsuario {
+
+	@Autowired
+	private GestorUsuario gestorUsuario;
+
+	@GetMapping("registra_user")
+	private String registrarUsuario() {
+		return "registro";
+	}
+
+	@GetMapping("LogIn")
+	private String login() {
+		return "login";
+	}
+
+	@PostMapping("registrar")
+	private String registrar(@RequestParam("nombre_usuario") String nombreUsuario, @RequestParam("pass") String pass,
+			Model model) throws NoSuchAlgorithmException {
+
+		String passwordHash = hashPassword(pass);
+		
+		Usuario u = new Usuario();
+		u.setNombre(nombreUsuario);
+		u.setPassword(passwordHash);
+
+		
+
+		gestorUsuario.addUsuario(u);
+
+		System.out.println(u);
+
+		return "inicio";
+	}
+
+	@PostMapping("login")
+	private String loginUsuario(@RequestParam("nombre_usuario") String nombreUsuario, @RequestParam("pass") String pass,
+			Model model) throws NoSuchAlgorithmException {
+
+		String passwordHash = hashPassword(pass);
+		
+		Usuario u = new Usuario();
+		u.setNombre(nombreUsuario);
+		u.setPassword(passwordHash);
+		
+		boolean validado = gestorUsuario.validarUsuario(u);
+
+		if (validado) {
+			return "inicio";
+
+		} else {
+			return "errorlogin";
+		}
+	}
+
+	@GetMapping("salir")
+	private String cerrarSesion() {
+		return "../static/home";
+	}
+	
+	@GetMapping("volver_login")
+	private String volverLogin() {
+		return "login";
+	}
+
+	private String hashPassword(String password) throws NoSuchAlgorithmException {
+		byte[] pass = password.getBytes();
+
+		MessageDigest md = MessageDigest.getInstance("SHA-512");
+		md.update(pass);
+
+		byte[] resumen = md.digest();
+		String mensaje = new String(resumen);
+		return mensaje;
+	}
+}
+
+//MODELO
+//Entidad
+package demo.modelo.entidad;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
+@Entity
+public class Usuario {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private int id;
+	private String nombre;
+	private String password;
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getNombre() {
+		return nombre;
+	}
+
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	@Override
+	public String toString() {
+		return "Usuario [id=" + id + ", nombre=" + nombre + ", password=" + password + "]";
+	}
+
+}
+//negocio
+package demo.modelo.negocio;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import demo.modelo.entidad.Usuario;
+import demo.modelo.persistencia.DaoUsuario;
+
+@Service
+public class GestorUsuario {
+
+	@Autowired
+	private DaoUsuario daoUsuario;
+
+	public boolean validarUsuario(Usuario usuario) {
+		Usuario aux = daoUsuario.findByNombreAndPassword(usuario.getNombre(), usuario.getPassword());
+
+		if (aux != null) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	public void addUsuario(Usuario user) {
+		daoUsuario.save(user);
+	}
+	
+
+}
+//persistencia
+package demo.modelo.persistencia;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import demo.modelo.entidad.Usuario;
+
+@Repository
+public interface DaoUsuario extends JpaRepository<Usuario, Integer>{
+
+	public Usuario findByNombreAndPassword(String nombre, String password);
+}
+
+//APLICATION
+package demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+	
+		
+	}
+
+}
+
+//SERV
+package demo;
+
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+
+public class ServletInitializer extends SpringBootServletInitializer {
+
+	@Override
+	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+		return application.sources(Application.class);
+	}
+
+}
